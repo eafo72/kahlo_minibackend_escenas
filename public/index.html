@@ -52,22 +52,39 @@
   </div>
 
   <script>
+
+     // ✅ 1. LEER PARÁMETROS DE ARUBA
+    const params = new URLSearchParams(window.location.search);
+    const client_mac = params.get("client_mac");
+    const ap_ip = params.get("ap_ip");
+    const target_url = params.get("url");
+
+    // ✅ 2. Verificar que llegaron parámetros
+    console.log("MAC Cliente:", client_mac);
+    console.log("IP del AP:", ap_ip);
+    console.log("URL destino:", target_url);
+
     function mostrarExito() {
       document.getElementById("login-form").classList.add("d-none");
       document.querySelector(".g_id_signin").classList.add("d-none");
       document.getElementById("mensaje-exito").classList.remove("d-none");
-      window.location.href = 'https://museocasakahlo.org';
+
+      //window.location.href = 'https://museocasakahlo.org';
       
       
     }
 
     
     function handleApiSuccess(res) {
-        // La API debe devolver la cadena de reconocimiento de Aruba
-        if (typeof res.data === 'string' && res.data.trim() === 'InstantOn.Acknowledge') {
-            mostrarExito(); // Redirige al cliente a Aruba
+       if (res.data?.status === "OK") {
+            mostrarExito();
+
+            // ✅ Redirigir al usuario a su destino
+            setTimeout(() => {
+                window.location.href = target_url || "https://museocasakahlo.org";
+            }, 1500);
         } else {
-            Swal.fire("Acceso denegado", "Correo o contraseña incorrectos.", "error");
+            Swal.fire("Acceso denegado", "No autorizado.", "error");
         }
     }
 
@@ -87,7 +104,7 @@
 
       try {
         // En este punto, tu API DEBE RESPONDER con 'InstantOn.Acknowledge' o un 4xx/5xx
-        const res = await axios.post(`${API_BASE_URL}/usuario/loginInternet`, { email, password });
+        const res = await axios.post(`${API_BASE_URL}/usuario/loginInternet`, { email, password, client_mac, ap_ip });
         Swal.close();
         handleApiSuccess(res);
       } catch (err) {
@@ -107,7 +124,7 @@
 
       try {
         // En este punto, tu API DEBE RESPONDER con 'InstantOn.Acknowledge' o un 4xx/5xx
-        const res = await axios.post(`${API_BASE_URL}/usuario/loginInternet`, { id_token: response.credential });
+        const res = await axios.post(`${API_BASE_URL}/usuario/loginInternet`, { id_token: response.credential, client_mac, ap_ip });
         Swal.close();
         handleApiSuccess(res);
       } catch (err) {

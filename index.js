@@ -1,7 +1,7 @@
 const express = require('express');
 const dgram = require('dgram');
 const app = express();
-const port = 3000;
+const port = 4000;
 
 const path = require('path');
 
@@ -10,8 +10,8 @@ app.use(express.static(path.join(__dirname, 'public')))
 
 
 // CONFIGURA TUS DATOS:
-const DMX_IP = "192.168.1.150";  // IP del SLESA-U10
-const DMX_PORT = 2430;           // Puerto fijo
+const DMX_IP = "192.168.100.101";  // IP del SLESA-U10
+const DMX_PORT = 2431;           // Puerto fijo
 
 app.get('/activar/:escena', (req, res) => {
   const index = parseInt(req.params.escena);

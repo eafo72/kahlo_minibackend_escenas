@@ -3,63 +3,61 @@ const dgram = require('dgram');
 const app = express();
 const port = 4000;
 
+const path = require('path');
 
-const IP = "192.168.100.101";  // IP del SLESA-U10
-const PORT = 2430;           // Puerto fijo
+//servir archivos estáticos desde la carpeta "public"
+app.use(express.static(path.join(__dirname, 'public')))
+
+// --- CONFIGURACIÓN DEL CONTROLADOR ---
+const CONTROLLER_IP = "192.168.100.101";
+const CONTROLLER_PORT = 2430;
 
 ///////////////////////////////////////////////////////////////////////////
-const client = dgram.createSocket("udp4");
+// --- CÓDIGOS HEXADECIMALES "SIUDI10A" ---
+// Fuente: Documentación oficial SLESA-U10 / SIUDI10A
+const HEX_CODES = {
+    "1": Buffer.from("53495544493130416D000100000100000000000000000000", "hex"), // Escena 1
+    "2": Buffer.from("53495544493130416D000200000100000000000000000000", "hex"), // Escena 2
+    "0": Buffer.from("53495544493130416D000000000100000000000000000000", "hex")  // Blackout (Escena 0)
+};
 
-// --- CÓDIGOS HEXADECIMALES DEL MANUAL ---
-// Fuente: Documento "SIUDI10A Remote Protocol Examples", Página 1 [cite: 1, 7]
+// --- ENDPOINT API ---
+// Uso: GET /activar/1  o  GET /activar/2
+app.get("/activar/:id", (req, res) => {
+    const idEscena = req.params.id;
+    const comandoBuffer = HEX_CODES[idEscena];
 
-// ESCENA 1
-// Nota: El byte "01" en medio indica la escena.
-const SCENE_1 = Buffer.from(
-  "53495544493130416D000100000100000000000000000000",
-  "hex"
-);
-
-// ESCENA 2
-// Nota: Cambiamos el byte a "02".
-const SCENE_2 = Buffer.from(
-  "53495544493130416D000200000100000000000000000000",
-  "hex"
-);
-
-console.log(`📡 Conectando a ${IP}:${PORT} usando protocolo SIUDI nativo...`);
-
-// FUNCIÓN DE DISPARO
-function activar(escenaBuffer, nombre) {
-  client.send(escenaBuffer, PORT, IP, (err) => {
-    if (err) {
-      console.error(`❌ Error enviando ${nombre}:`, err);
-    } else {
-      console.log(`✅ ¡ENVIADO ${nombre}! -> Mira las luces.`);
+    if (!comandoBuffer) {
+        return res.status(400).json({ 
+            status: "error", 
+            mensaje: "Escena no válida. Usa 1 o 2." 
+        });
     }
-  });
-}
 
-// --- SECUENCIA DE PRUEBA ---
-console.log("💡 Activando ESCENA 1 (Cartas)...");
-activar(SCENE_1, "Escena 1");
+    // Crear socket UDP para este disparo
+    const client = dgram.createSocket("udp4");
 
-setTimeout(() => {
-  console.log("⏳ Esperando 3 segundos...");
-}, 1000);
+    client.send(comandoBuffer, CONTROLLER_PORT, CONTROLLER_IP, (err) => {
+        client.close(); // Cerramos socket inmediatamente después de enviar
 
-setTimeout(() => {
-  console.log("💡 Activando ESCENA 2 (Servicio)...");
-  activar(SCENE_2, "Escena 2");
+        if (err) {
+            console.error("❌ Error enviando UDP:", err);
+            return res.status(500).json({ status: "error", mensaje: "Fallo de red con el controlador" });
+        }
 
-  // Cerramos
-  setTimeout(() => {
-    console.log("🏁 Prueba terminada.");
-    client.close();
-  }, 1000);
-}, 3000);
+        console.log(`✅ Escena ${idEscena} activada en ${CONTROLLER_IP}`);
+        return res.json({ status: "ok", escena_activada: idEscena });
+    });
+});
 
 ///////////////////////////////////////////////////////////////////////////
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-app.listen(port, () => console.log(`Servidor escuchando en http://localhost:${port}`));
+// --- INICIAR SERVIDOR ---
+app.listen(port, () => {
+    console.log(`🏛️  Servidor Casa Kahlo listo en http://localhost:${port}`);
+});
+

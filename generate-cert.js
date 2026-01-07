@@ -8,3 +8,4 @@ fs.writeFileSync('certs/key.pem', pems.private);
 fs.writeFileSync('certs/cert.pem', pems.cert);
 
 console.log('Certificados generados en la carpeta certs/');
+
